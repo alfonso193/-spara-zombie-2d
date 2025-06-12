@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Gioco - Combatti i Nemici!</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #f0f0f0;
+      font-family: sans-serif;
+    }
+
+    #giocatore {
+      width: 50px;
+      height: 50px;
+      background-color: blue;
+      position: absolute;
+      top: 300px;
+      left: 100px;
+    }
+
+    .nemico {
+      width: 50px;
+      height: 50px;
+      background-color: red;
+      position: absolute;
+    }
+
+    .proiettile {
+      width: 10px;
+      height: 10px;
+      background-color: yellow;
+      position: absolute;
+    }
+
+    #gameOver {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      color: red;
+      display: none;
+      z-index: 1000;
+    }
+
+    #punteggio {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="giocatore"></div>
+<div id="gameOver">GAME OVER<br><small>Premi R per ricominciare</small></div>
+<div id="punteggio">Punteggio: 0</div>
+
+<script>
+  const giocatore = document.getElementById('giocatore');
+  const gameOverText = document.getElementById('gameOver');
+  const punteggioText = document.getElementById('punteggio');
+
+  const velocità = 10;
+  let posizioneX = 100;
+  let posizioneY = 300;
+  let giocoAttivo = true;
+  let punteggio = 0;
+  let nemici = [];
+
+  // Aggiorna posizione giocatore
+  function aggiornaPosizioneGiocatore() {
+    giocatore.style.top = posizioneY + 'px';
+    giocatore.style.left = posizioneX + 'px';
+  }
+
+  // Movimento tastiera
+  document.addEventListener('keydown', function(event) {
+    if (!giocoAttivo && event.key === 'r') {
+      restartGame();
+      return;
+    }
+
+    if (!giocoAttivo) return;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        posizioneY -= velocità;
+        break;
+      case 'ArrowDown':
+        posizioneY += velocità;
+        break;
+      case 'ArrowLeft':
+        posizioneX -= velocità;
+        break;
+      case 'ArrowRight':
+        posizioneX += velocità;
+        break;
+      case ' ':
+        spara();
+        break;
+    }
+    aggiornaPosizioneGiocatore();
+  });
+
+  // Crea nemico a y casuale
+  function creaNemico() {
+    const yCasuale = Math.floor(Math.random() * (window.innerHeight - 50));
+    const nemico = document.createElement('div');
+    nemico.classList.add('nemico');
+    nemico.style.left = window.innerWidth + 'px';
+    nemico.style.top = yCasuale + 'px';
+    document.body.appendChild(nemico);
+    nemici.push(nemico);
+  }
+
+  // Aggiorna nemici
+  function aggiornaNemici() {
+    if (!giocoAttivo) return;
+
+    nemici.forEach((nemico, index) => {
+      if (nemico) {
+        let x = parseInt(nemico.style.left);
+        x -= 2;
+        nemico.style.left = x + 'px';
+
+        if (x <= 0) {
+          gameOver();
+        }
+      }
+    });
+  }
+
+  // Funzione per sparare
+  function spara() {
+    const proiettile = document.createElement('div');
+    proiettile.classList.add('proiettile');
+    proiettile.style.left = posizioneX + 50 + 'px';
+    proiettile.style.top = posizioneY + 20 + 'px';
+    document.body.appendChild(proiettile);
+
+    let x = posizioneX + 50;
+
+    const intervallo = setInterval(() => {
+      if (!giocoAttivo) {
+        proiettile.remove();
+        clearInterval(intervallo);
+        return;
+      }
+
+      x += 10;
+      proiettile.style.left = x + 'px';
+
+      nemici.forEach((nemico, index) => {
+        if (nemico && controllaCollisione(proiettile, nemico)) {
+          nemico.remove();
+          nemici[index] = null;
+          proiettile.remove();
+          clearInterval(intervallo);
+          punteggio++;
+          aggiornaPunteggio();
+        }
+      });
+
+      if (x > window.innerWidth) {
+        proiettile.remove();
+        clearInterval(intervallo);
+      }
+    }, 20);
+  }
+
+  // Controllo collisione
+  function controllaCollisione(a, b) {
+    const rect1 = a.getBoundingClientRect();
+    const rect2 = b.getBoundingClientRect();
+
+    return !(
+      rect1.right < rect2.left ||
+      rect1.left > rect2.right ||
+      rect1.bottom < rect2.top ||
+      rect1.top > rect2.bottom
+    );
+  }
+
+  // Game Over
+  function gameOver() {
+    giocoAttivo = false;
+    gameOverText.style.display = 'block';
+  }
+
+  // Aggiorna punteggio
+  function aggiornaPunteggio() {
+    punteggioText.textContent = 'Punteggio: ' + punteggio;
+  }
+
+  // Riavvia gioco
+  function restartGame() {
+    // Rimuove nemici
+    nemici.forEach(n => n && n.remove());
+    nemici = [];
+    // Ripristina valori
+    posizioneX = 100;
+    posizioneY = 300;
+    punteggio = 0;
+    giocoAttivo = true;
+    aggiornaPosizioneGiocatore();
+    aggiornaPunteggio();
+    gameOverText.style.display = 'none';
+  }
+
+  // Loop nemici
+  setInterval(() => {
+    if (giocoAttivo) creaNemico();
+  }, 2000);
+
+  // Loop movimento
+  setInterval(() => {
+    aggiornaNemici();
+  }, 20);
+</script>
+
+</body>
+</html>
